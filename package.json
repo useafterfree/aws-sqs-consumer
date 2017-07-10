@@ -1,0 +1,24 @@
+{
+  "name": "aws-sqs-consumer",
+  "version": "1.0.0",
+  "description": "Consumer package for AWS SQS",
+  "main": "index.js",
+  "scripts": {
+    "test": "mocha test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/jdgriffith/aws-sqs-consumer.git"
+  },
+  "keywords": [
+    "AWS",
+    "SQS",
+    "consumer"
+  ],
+  "author": "Justin Griffith",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/jdgriffith/aws-sqs-consumer/issues"
+  },
+  "homepage": "https://github.com/jdgriffith/aws-sqs-consumer#readme"
+}

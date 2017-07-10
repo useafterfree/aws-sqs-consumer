@@ -1,0 +1,9 @@
+{
+  "plugins": [
+    "ava"
+  ],
+  "extends": [
+    "pichak",
+    "plugin:ava/recommended"
+  ]
+}

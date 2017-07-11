@@ -1,4 +1,5 @@
-import _ from 'lodash'
+import Promise from 'bluebird'
+import Consumer from './Consumer'
 
 /**
  * ConsumerManagerService Class
@@ -6,140 +7,65 @@ import _ from 'lodash'
  * @type {ConsumerManagerService}
  */
 export default class ConsumerManagerService {
-
   /**
    * Set the strategy on construction
    *
-   * @param {Number|Null} amountOfConsumers
-   * @param {String|Null} strategy
+   * @param (Object|null} options
    */
-  constructor(amountOfConsumers, strategy) {
-
-    // create an array of consumers
+  constructor (options) {
     this.consumers = []
 
-    // set the strategy
-    this.strategy = strategy || 'runJobStrategy'
+    this.defaults = Object.assign({
+      batchSize: 10,
+      attributeNames: [],
+      messageAttributeNames: [],
+      visibilityTimeout: 120,
+      waitTimeSeconds: 20,
+      authenticationErrorTimeout: 10000,
+      amountOfConsumers: 1,
+      handleMessage: () => {}
+    }, options)
 
     // go ahead and create the pool
-    this.createPool(amountOfConsumers || 1)
+    this.createPool(this.defaults.amountOfConsumers)
   }
 
-  addConsumer() {
-
+  addConsumer () {
     this.consumers.push(this.createConsumer())
   }
 
-  createPool(number) {
+  async createPool () {
+    const promiseArray = new Array(this.defaults.amountOfConsumers)
 
-    // add a consumer if not 0
-    if (number > 0) this.addConsumer()
-
-    // if number is not 0
-    if (--number > 0) {
-
-      // call this function again
-      return this.createPool(number)
-    }
+    return Promise.map(promiseArray, () => this.addConsumer(), {
+      concurrency: this.defaults.amountOfConsumers
+    })
   }
 
   /**
    * Remove stopped consumers
    */
-  removeStoppedConsumers() {
-
-    // remove stopped consumers
-    _.remove(this.consumers, consumer => consumer.stopped)
+  removeStoppedConsumers () {
+    this.consumers = this.consumers.filter(consumer => !consumer.stopped)
   }
 
   /**
    * Kill consumers in array
    */
-  killPool() {
-
-    // stop consumers
-    _.each(this.consumers, consumer => consumer.stop())
+  async killPool () {
+    await Promise.map(this.consumers, consumer => consumer.stop(), {
+      concurrency: 10
+    })
 
     // empty array
-    this.consumers = []
-  }
-
-  // create a consumer
-  createConsumer() {
-
-    let self = this
-
-    // create the consumer
-    return new Consumer({
-      queueUrl: process.env.SQS_WORKER_QUEUE,
-      batchSize: 10,
-      handleMessage: message => {
-
-        try {
-
-          // if invoke lambda strategy
-          if (_.eq(self.strategy, 'invokeLambdaStrategy')) {
-
-            // invoke lambda function
-            return self.invokeLambdaStrategy(message)
-          }
-
-          return self.runJobStrategy(message)
-        }
-        catch (error) {
-
-          return Promise.reject(error)
-        }
-      }
-    })
+    this.consumers = this.removeStoppedConsumers()
   }
 
   /**
-   * Handle the message strategy
    *
-   * @param {Object} message
-   * @returns {*}
+   * @returns {Consumer}
    */
-  handleMessageStrategy(message) {
-
-    try {
-
-      // if invoke lambda strategy
-      if (_.eq(this.strategy, 'invokeLambdaStrategy')) {
-
-        // invoke lambda function
-        return this.invokeLambdaStrategy(message)
-      }
-
-      return this.runJobStrategy(message)
-    }
-    catch (error) {
-
-      return Promise.reject(error)
-    }
-  }
-
-  /**
-   * Strategy for running the job
-   *
-   * @param {Object} message
-   */
-  runJobStrategy(message) {
-
-    // parse the message body
-    let worker = JSON.parse(message.Body)
-
-    // run the worker
-    return WorkerService.run(worker)
-  }
-
-  /**
-   * Strategy for invoking lambda functions
-   *
-   * @param {Object} message
-   */
-  invokeLambdaStrategy(message) {
-
-    return LambdaService.invoke(process.env.WORKER_LAMBDA_FUNCTION_NAME, message.Body)
+  createConsumer () {
+    return new Consumer(this.defaults)
   }
 }

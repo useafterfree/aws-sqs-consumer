@@ -3,7 +3,14 @@
     "ava"
   ],
   "extends": [
-    "pichak",
+    "standard",
     "plugin:ava/recommended"
-  ]
+  ],
+  "rules": {
+    "semi": 0
+  },
+  "env": {
+    "browser": false,
+    "node": true
+  }
 }

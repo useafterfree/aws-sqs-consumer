@@ -10,7 +10,9 @@ import winston from 'winston'
 class SQSError extends Error {}
 
 /**
- * Create the class
+ * Consumer Class
+ *
+ * @type {Consumer}
  */
 export default class Consumer extends EventEmitter {
   constructor (options) {
@@ -44,7 +46,7 @@ export default class Consumer extends EventEmitter {
   }
 
   validate (options) {
-    if ((!options['queueUrl'] || !options['sqs']) || !options['handleMessage']) {
+    if ((!options.queueUrl || !options.sqs) || !options.handleMessage) {
       throw new Error('Missing SQS consumer option queueUrl, sqs, or handleMessage function')
     }
 
@@ -175,7 +177,7 @@ export default class Consumer extends EventEmitter {
   }
 
   deleteMessageBatch (messages) {
-    const Entries = _.map(messages, message => ({
+    const Entries = messages.map(message => ({
       ReceiptHandle: message.ReceiptHandle,
       Id: message.MessageId
     }))
@@ -220,34 +222,43 @@ export default class Consumer extends EventEmitter {
    * This sets what should happen
    * when lifecycle events are emitted
    */
-  setEventProcessing () {
+  setEventProcessing (options) {
     const consumer = this
 
     // message event
     consumer.on('message_received', (message) => {
-
+      options.events.messageReceived()
     })
 
     // error event
     consumer.on('error', (message, error) => {
       winston.error(error)
+
+      options.events.error(message, error)
     })
 
     // error event
     consumer.on('processing_error', (message, error) => {
       winston.error(error)
+
+      options.events.processingError(message, error)
     })
 
     // message event
     consumer.on('message_processed', (message) => {
-
+      options.events.messageProcessed(message)
     })
 
     // queue is empty so scale down workers
     consumer.on('empty', () => {
+      options.events.empty()
     })
 
     // on stopped maybe we should continue polling
-    consumer.on('stopped', () => consumer.poll())
+    consumer.on('stopped', () => {
+      consumer.poll()
+
+      options.events.stopped()
+    })
   }
 }

@@ -23,7 +23,15 @@ export default class ConsumerManagerService {
       waitTimeSeconds: 20,
       authenticationErrorTimeout: 10000,
       amountOfConsumers: 1,
-      handleMessage: () => {}
+      handleMessage: () => {},
+      events: {
+        messageReceived: () => {},
+        error: () => {},
+        processingError: () => {},
+        messageProcessed: () => {},
+        empty: () => {},
+        stopped: () => {}
+      }
     }, options)
 
     // go ahead and create the pool
@@ -35,9 +43,7 @@ export default class ConsumerManagerService {
   }
 
   async createPool () {
-    const promiseArray = new Array(this.defaults.amountOfConsumers)
-
-    return Promise.map(promiseArray, () => this.addConsumer(), {
+    return Promise.map(new Array(this.defaults.amountOfConsumers), this.addConsumer, {
       concurrency: this.defaults.amountOfConsumers
     })
   }

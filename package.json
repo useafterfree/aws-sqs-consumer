@@ -1,8 +1,8 @@
 {
   "name": "aws-sqs-consumer",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Consumer package for AWS SQS",
-  "main": "build/index.js",
+  "main": "build/ConsumerManagerService.js",
   "scripts": {
     "precommit": "npm run build && npm run lint",
     "prepush": "npm run build && npm run lint && npm test",

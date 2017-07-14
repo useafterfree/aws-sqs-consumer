@@ -176,7 +176,7 @@ export default class Consumer extends EventEmitter {
     })
   }
 
-  deleteMessageBatch (messages) {
+  async deleteMessageBatch (messages) {
     const Entries = messages.map(message => ({
       ReceiptHandle: message.ReceiptHandle,
       Id: message.MessageId

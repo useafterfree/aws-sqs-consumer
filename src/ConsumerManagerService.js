@@ -25,10 +25,10 @@ export default class ConsumerManagerService {
       amountOfConsumers: 1,
       handleMessage: () => {},
       events: {
-        messageReceived: () => {},
-        error: () => {},
-        processingError: () => {},
-        messageProcessed: () => {},
+        messageReceived: (message) => {},
+        error: (message, error) => {},
+        processingError: (message, error) => {},
+        messageProcessed: (message) => {},
         empty: () => {},
         stopped: () => {}
       }

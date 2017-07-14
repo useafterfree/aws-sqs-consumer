@@ -52,5 +52,4 @@ const manager = new ConsumerManagerService({
 
 The events section contains possible event functions you can pass in for custom functionality. 
 
-
-
+Each consumer will grab 10 messages at a time if you leave the default, which is the max AWS SQS allows. This means for n number of consumers, to get the concurrent number of messages being processed, you would just do n * 10. 

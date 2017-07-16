@@ -43,7 +43,9 @@ export default class ConsumerManagerService {
   }
 
   async createPool () {
-    return Promise.map(new Array(this.defaults.amountOfConsumers), this.addConsumer, {
+    let manager = this
+
+    return Promise.map(new Array(this.defaults.amountOfConsumers), () => manager.addConsumer(), {
       concurrency: this.defaults.amountOfConsumers
     })
   }

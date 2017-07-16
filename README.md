@@ -19,6 +19,10 @@ import ConsumerManagerService from 'aws-sqs-consumer'
 const manager = new ConsumerManagerService({
     queueUrl: 'https://www.queueurl.com',
     amountOfConsumers: 1,
+    handleMessage: (message) => {
+        
+        // add your custom logic here. Remember, this is promise based!
+    }
 })
 ```
 

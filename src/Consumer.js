@@ -46,7 +46,7 @@ export default class Consumer extends EventEmitter {
   }
 
   validate (options) {
-    if ((!options.queueUrl || !options.sqs) || !options.handleMessage) {
+    if ((!options.queueUrl && !options.sqs) || !options.handleMessage) {
       throw new Error('Missing SQS consumer option queueUrl, sqs, or handleMessage function')
     }
 

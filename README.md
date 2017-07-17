@@ -11,6 +11,15 @@ I am still getting tests together for this early version and this is not battle 
 
 ## Getting Started
 
+You will need the following environment variables set: 
+
+```
+AWS_ACCESS_KEY_ID=<your-access-key-id>
+AWS_SECRET_ACCESS_KEY=<your-access-key>
+```
+
+You can accomplish this by using [dotenv](https://www.npmjs.com/package/dotenv) if you like. Use their documentation for reference.
+
 Import the `ConsumerManagerService` into your project.
 
 ```
@@ -19,9 +28,9 @@ import ConsumerManagerService from 'aws-sqs-consumer'
 const manager = new ConsumerManagerService({
     queueUrl: 'https://www.queueurl.com',
     amountOfConsumers: 1,
-    handleMessage: (message) => {
+    handleMessage: async (message) => {
         
-        // add your custom logic here. Remember, this is promise based!
+        return yourCustomPromiseFunction(message)
     }
 })
 ```
@@ -39,6 +48,7 @@ const manager = new ConsumerManagerService({
   amountOfConsumers: 1,
   queueUrl: 'http://that.queueurl.io',
   sqs: new AWS.SQS() // prebuilt sqs object,
+  region: 'us-east-1', // AWS region
   handleMessage: (message) => {
     
     // add your custom logic here. Remember, this is promise based!

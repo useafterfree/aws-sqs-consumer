@@ -227,7 +227,7 @@ export default class Consumer extends EventEmitter {
 
     // message event
     consumer.on('message_received', (message) => {
-      options.events.messageReceived()
+      options.events.messageReceived(message)
     })
 
     // error event

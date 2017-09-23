@@ -1,7 +1,7 @@
 import test from 'ava'
 import ConsumerManagerService from './../src/ConsumerManagerService'
 
-test('constructor of consumer manager service', t => {
+test.skip('constructor of consumer manager service', t => {
   let manager = new ConsumerManagerService({
     queueUrl: process.env.SQS_ENDPOINT,
     handleMessage: (message) => {

@@ -8,11 +8,11 @@ const Chance = new chance()
 
 require('dotenv').config({ path: './../.env' })
 
-test.after('cleanup', () => {
+test.skip('cleanup', () => {
   return consumer.sqs.purgeQueue({ QueueUrl: process.env.SQS_ENDPOINT }).promise()
 })
 
-test('constructor of consumer', () => {
+test.skip('constructor of consumer', () => {
   consumer = new Consumer({
     queueUrl: process.env.SQS_ENDPOINT,
     handleMessage: (message) => {}

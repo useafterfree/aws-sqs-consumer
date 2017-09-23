@@ -1,14 +1,38 @@
 import test from 'ava'
 import Consumer from './../src/Consumer'
+import Promise from 'bluebird'
+import chance from 'chance'
 
-test('constructor of consumer', t => {
-  let consumer = new Consumer({
-    queueUrl: 'http://that.queueurl.com',
-    handleMessage: (message) => {
+let consumer = null
+const Chance = new chance()
 
-      // add your custom logic here. Remember, this is promise based!
-    }
+require('dotenv').config({ path: './../.env' })
+
+test.after('cleanup', () => {
+  return consumer.sqs.purgeQueue({ QueueUrl: process.env.SQS_ENDPOINT }).promise()
+})
+
+test('constructor of consumer', () => {
+  consumer = new Consumer({
+    queueUrl: process.env.SQS_ENDPOINT,
+    handleMessage: (message) => {}
   })
 
-  t.pass()
+  const messages = Array(100)
+
+  return Promise.map(messages, () => {
+      return consumer.sqs.sendMessage({
+        MessageBody: Chance.sentence(),
+        QueueUrl: process.env.SQS_ENDPOINT
+      }).promise()
+    })
 })
+
+// test('test processing of message', t => {
+//   consumer.handleMessage = (message) => {
+//     console.log(message.Body)
+//     t.true(message.Body.length > 0)
+//   }
+//
+//   consumer.on('empty', () => t.pass())
+// })

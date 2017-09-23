@@ -1,11 +1,12 @@
 {
   "name": "aws-sqs-consumer",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "Manager for consumer pools for AWS SQS",
   "main": "build/ConsumerManagerService.js",
   "scripts": {
     "precommit": "npm run build && npm run lint",
     "prepush": "npm run build && npm run lint && npm test",
+    "prepublish": "npm run build && npm run lint && npm test",
     "lint": "eslint src",
     "coverage": "nyc report --reporter=text-lcov > coverage.lcov && codecov",
     "tdd": "ava --watch",
@@ -83,6 +84,8 @@
   "dependencies": {
     "aws-sdk": "^2.82.0",
     "bluebird": "^3.5.0",
+    "chance": "^1.0.11",
+    "dotenv": "^4.0.0",
     "lodash": "^4.17.4",
     "winston": "^2.3.1"
   }

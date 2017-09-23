@@ -18,31 +18,48 @@ export default class Consumer extends EventEmitter {
   constructor (options) {
     super()
 
-    this.validate(options)
+    this.setOptions(options)
 
-    this.queueUrl = options.queueUrl
-    this.handleMessage = options.handleMessage
-    this.attributeNames = options.attributeNames || []
-    this.messageAttributeNames = options.messageAttributeNames || []
-    this.stopped = true
-    this.batchSize = options.batchSize || 1
-    this.visibilityTimeout = options.visibilityTimeout || 120
-    this.waitTimeSeconds = options.waitTimeSeconds || 20
-    this.authenticationErrorTimeout = options.authenticationErrorTimeout || 10000
-
-    this.sqs = options.sqs || new AWS.SQS({
-      endpoint: options.queueUrl,
-      region: options.region || 'us-east-1'
+    this.sqs = this.options.sqs || new AWS.SQS({
+      endpoint: this.options.queueUrl,
+      region: this.options.region || 'us-east-1',
+      accessKeyId: process.env.AWS_ACCESS_KEY_ID || options.accessKeyId,
+      secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || options.secretAccessKey
     })
-
-    // set a lock
-    this.pollLock = false
 
     // set event processing
     this.setEventProcessing()
 
     // start this consumer
     this.start()
+  }
+
+  setOptions (options) {
+    this.validate(options)
+
+    this.options = options
+
+    this.options.events = Object.assign({
+      messageReceived: (message) => {},
+      error: (message, error) => {},
+      processingError: (message, error) => {},
+      messageProcessed: (message) => {},
+      empty: () => {},
+      stopped: () => {}
+    }, options.events || {})
+
+    this.queueUrl = options.queueUrl
+    this.handleMessage = options.handleMessage
+    this.attributeNames = options.attributeNames || []
+    this.messageAttributeNames = options.messageAttributeNames || []
+    this.stopped = false
+    this.batchSize = options.batchSize || 10
+    this.visibilityTimeout = options.visibilityTimeout || 120
+    this.waitTimeSeconds = options.waitTimeSeconds || 20
+    this.authenticationErrorTimeout = options.authenticationErrorTimeout || 10000
+
+    // set a lock
+    this.pollLock = false
   }
 
   validate (options) {
@@ -107,9 +124,9 @@ export default class Consumer extends EventEmitter {
 
         await Promise.delay(consumer.authenticationErrorTimeout)
       }
-
-      return consumer.poll()
     }
+
+    return consumer.poll()
   }
 
   getParams () {
@@ -126,16 +143,18 @@ export default class Consumer extends EventEmitter {
   async handleSqsResponse (response) {
     const consumer = this
 
-    // if response
-    if (consumer.responseHasMessages(response)) {
-      await Promise.map(response.Messages, message => consumer.processMessage(message), {
-        concurrency: 10
-      })
-
-      await consumer.deleteMessageBatch(response.Messages)
+    if (!consumer.responseHasMessages(response)) {
+      console.log('here')
+      console.log(response)
+      consumer.emit('empty')
+      return
     }
 
-    consumer.emit('empty')
+    await Promise.map(response.Messages, message => consumer.processMessage(message), {
+      concurrency: 10
+    })
+
+    await consumer.deleteMessageBatch(response.Messages)
   }
 
   async processMessage (message) {
@@ -162,18 +181,13 @@ export default class Consumer extends EventEmitter {
   async deleteMessage (message) {
     winston.info('Deleting message %s', message.MessageId)
 
-    return new Promise((resolve, reject) => {
-      this.sqs.deleteMessage({
-        QueueUrl: this.queueUrl,
-        ReceiptHandle: message.ReceiptHandle
-      }, (error, result) => {
-        if (error) {
-          return reject(new SQSError(`SQS delete message failed: ${error.message}`))
-        }
-
-        return resolve(result)
+    return this.sqs.deleteMessage({
+      QueueUrl: this.queueUrl,
+      ReceiptHandle: message.ReceiptHandle
+    }).promise()
+      .catch(error => {
+        throw new SQSError(`SQS delete message failed: ${error.message}`)
       })
-    })
   }
 
   async deleteMessageBatch (messages) {
@@ -182,15 +196,11 @@ export default class Consumer extends EventEmitter {
       Id: message.MessageId
     }))
 
-    return new Promise((resolve, reject) => {
-      this.sqs.deleteMessageBatch({QueueUrl: this.queueUrl, Entries}, (error, result) => {
-        if (error) {
-          return reject(new SQSError(`SQS delete message failed: ${error.message}`))
-        }
-
-        return resolve(result)
+    this.sqs.deleteMessageBatch({QueueUrl: this.queueUrl, Entries})
+      .promise()
+      .catch(error => {
+        throw new SQSError(`SQS delete message failed: ${error.message}`)
       })
-    })
   }
 
   /**
@@ -209,56 +219,50 @@ export default class Consumer extends EventEmitter {
   async receiveMessages () {
     const consumer = this
 
-    return new Promise((resolve, reject) => {
-      consumer.sqs.receiveMessage(consumer.getParams(), (error, response) => {
-        if (error) return reject(error)
-
-        return resolve(response)
-      })
-    })
+    return consumer.sqs.receiveMessage(consumer.getParams()).promise()
   }
 
   /**
    * This sets what should happen
    * when lifecycle events are emitted
    */
-  setEventProcessing (options) {
+  setEventProcessing () {
     const consumer = this
 
     // message event
     consumer.on('message_received', (message) => {
-      options.events.messageReceived(message)
+      this.options.events.messageReceived(message)
     })
 
     // error event
     consumer.on('error', (message, error) => {
       winston.error(error)
 
-      options.events.error(message, error)
+      this.options.events.error(message, error)
     })
 
     // error event
     consumer.on('processing_error', (message, error) => {
       winston.error(error)
 
-      options.events.processingError(message, error)
+      this.options.events.processingError(message, error)
     })
 
     // message event
     consumer.on('message_processed', (message) => {
-      options.events.messageProcessed(message)
+      this.options.events.messageProcessed(message)
     })
 
     // queue is empty so scale down workers
     consumer.on('empty', () => {
-      options.events.empty()
+      this.options.events.empty()
     })
 
     // on stopped maybe we should continue polling
     consumer.on('stopped', () => {
       consumer.poll()
 
-      options.events.stopped()
+      this.options.events.stopped()
     })
   }
 }

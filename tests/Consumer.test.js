@@ -1,38 +1,63 @@
-import test from 'ava'
-import Consumer from './../src/Consumer'
-import Promise from 'bluebird'
-import chance from 'chance'
+'use strict'
 
-let consumer = null
-const Chance = new chance()
+const test = require('ava')
+const {Consumer} = require('./../src/')
+const Promise = require('bluebird')
+const Chance = require('chance')
+const {chunk} = require('lodash')
+const messagePlan = 50
 
-require('dotenv').config({ path: './../.env' })
+require('dotenv').config({path: `${__dirname}/../.env`})
 
-test.skip('cleanup', () => {
-  return consumer.sqs.purgeQueue({ QueueUrl: process.env.SQS_ENDPOINT }).promise()
+const generator = new Chance()
+const consumer = new Consumer({
+  queueUrl: process.env.SQS_ENDPOINT,
+  handleMessage: (message) => {},
+  events: {
+    error: (error) => console.log(error)
+  }
 })
 
-test.skip('constructor of consumer', () => {
-  consumer = new Consumer({
-    queueUrl: process.env.SQS_ENDPOINT,
-    handleMessage: (message) => {}
+test.before('cleanup', () => {
+  return consumer.sqs.purgeQueue({QueueUrl: process.env.SQS_ENDPOINT}).promise()
+    .catch(error => console.log(error.message))
+})
+
+test.cb('constructor of consumer', t => {
+  t.plan(messagePlan)
+
+  consumer.consumerDefaults.handleMessage = (message) => {
+    t.true(message.Body.length > 0)
+    return Promise.resolve(true)
+  }
+
+  const messages = []
+
+  for (var i = 0; i < messagePlan; i++) {
+    messages.push({
+      Id: generator.guid(),
+      MessageBody: generator.sentence()
+    })
+  }
+
+  const chunked = chunk(messages, 10)
+
+  Promise.map(chunked, async (block) => {
+    await consumer.sqs.sendMessageBatch({
+      Entries: block,
+      QueueUrl: consumer.consumerDefaults.queueUrl
+    }).promise().catch(error => console.log(error.message))
   })
-
-  const messages = Array(100)
-
-  return Promise.map(messages, () => {
-      return consumer.sqs.sendMessage({
-        MessageBody: Chance.sentence(),
-        QueueUrl: process.env.SQS_ENDPOINT
-      }).promise()
+    .then(() => {
+      setTimeout(() => {
+        consumer.consumerDefaults.events.empty = () => {
+          t.end()
+        }
+      }, 1000)
     })
 })
 
-// test('test processing of message', t => {
-//   consumer.handleMessage = (message) => {
-//     console.log(message.Body)
-//     t.true(message.Body.length > 0)
-//   }
-//
-//   consumer.on('empty', () => t.pass())
-// })
+test.after('cleanup', () => {
+  return consumer.sqs.purgeQueue({QueueUrl: process.env.SQS_ENDPOINT}).promise()
+    .catch(error => console.log(error.message))
+})

@@ -3,11 +3,7 @@ Consumers for AWS SQS - Promise based
 
 ## Description
 
-Create a pool of consumers to consume many messages/jobs at once and increase concurrency. You can scale the number of consumers up and down easily. This package was created after reviewing the inner workings of [sqs-consumer](https://www.npmjs.com/package/sqs-consumer).
-
-## Very early -- use at your own risk
-
-I am still getting tests together for this early version and this is not battle tested. 
+Create a pool of consumers to consume many messages/jobs at once and increase concurrency. You can scale the number of consumers up and down easily. This package was created after reviewing the inner workings of [sqs-consumer](https://www.npmjs.com/package/sqs-consumer). 
 
 ## Getting Started
 
@@ -20,17 +16,16 @@ AWS_SECRET_ACCESS_KEY=<your-access-key>
 
 You can accomplish this by using [dotenv](https://www.npmjs.com/package/dotenv) if you like. Use their documentation for reference.
 
-Import the `ConsumerManagerService` into your project.
+Import the `ConsumerManager` into your project. First params is the pool size and the second is the options object. 
 
 ```
-import ConsumerManagerService from 'aws-sqs-consumer'
+const {ConsumerManager, Consumer} =  require('aws-sqs-consumer')
 
-const manager = new ConsumerManagerService({
+const manager = new ConsumerManager(2, {
     queueUrl: 'https://www.queueurl.com',
-    amountOfConsumers: 1,
     handleMessage: async (message) => {
         
-        return yourCustomPromiseFunction(message)
+        return yourCustomFunction(message)
     }
 })
 ```
@@ -45,9 +40,9 @@ const manager = new ConsumerManagerService({
   visibilityTimeout: 120,
   waitTimeSeconds: 20,
   authenticationErrorTimeout: 10000,
-  amountOfConsumers: 1,
   queueUrl: 'http://that.queueurl.io',
   sqs: new AWS.SQS() // prebuilt sqs object,
+  log: winston // default is console
   region: 'us-east-1', // AWS region
   handleMessage: (message) => {
     
@@ -67,3 +62,5 @@ const manager = new ConsumerManagerService({
 The events section contains possible event functions you can pass in for custom functionality. 
 
 Each consumer will grab 10 messages at a time if you leave the default, which is the max AWS SQS allows. This means for n number of consumers, to get the concurrent number of messages being processed, you would just do n * 10. 
+
+Default polling is set to short polling. If you pass `waitTimeSeconds`, this will cause long polling. 
